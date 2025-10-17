@@ -3,319 +3,158 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>本地双人中国象棋（Xiangqi）</title>
+  <title>中国象棋 - 本地单机/双人（含悔棋、音效、AI）</title>
   <style>
-    :root{ --cell:64px; --board-width: calc(var(--cell) * 9); }
-    body{ font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", "Microsoft YaHei", sans-serif; display:flex; gap:24px; padding:24px; background:#f3f6fb; }
-    .wrap{ display:flex; gap:20px; }
-    #board{ width:var(--board-width); height:calc(var(--cell) * 10); display:grid; grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(10, 1fr); border:6px solid #8b5e3c; background: linear-gradient(#f5deb3,#f2d6a1); box-shadow:0 6px 18px rgba(0,0,0,0.15); }
-    .cell{ box-sizing:border-box; border:1px solid rgba(0,0,0,0.06); display:flex; align-items:center; justify-content:center; font-size:28px; cursor:pointer; user-select:none; position:relative; }
-    .cell.coord::after{ position:absolute; right:4px; bottom:2px; font-size:10px; color:rgba(0,0,0,0.25); }
-    .cell.sel{ outline:3px solid rgba(0,123,255,0.6); }
-    .cell.move{ background: rgba(0,200,0,0.12); }
-    .cell.capture::after{ content:''; width:10px; height:10px; border-radius:50%; background:rgba(200,0,0,0.85); position:absolute; right:6px; bottom:6px; }
-    .piece{ font-weight:700; font-size:30px; }
-    .red{ color:#b22222; }
-    .black{ color:#222; }
-
-    .sidebar{ width:300px; padding:16px; background:white; border-radius:8px; box-shadow:0 6px 16px rgba(0,0,0,0.08); }
-    .title{ font-size:18px; font-weight:700; margin-bottom:8px; }
-    .info{ margin-bottom:12px; }
-    button{ padding:8px 12px; border-radius:6px; border:1px solid #ccc; background:#fff; cursor:pointer; }
-    .footer{ margin-top:12px; font-size:13px; color:#555; }
+    :root{ --cell:66px; --board-width: calc(var(--cell) * 9); --theme-brown:#8b5e3c; --theme-light:#f7e1b8; }
+    *{box-sizing:border-box}
+    body{font-family: 'Noto Sans SC', system-ui, sans-serif; display:flex; flex-direction:column; align-items:center; gap:14px; padding:18px; background:linear-gradient(180deg,#efe5c6,#f8f1dd);} 
+    h1{margin:0;color:#5b3a23}
+    .controls{width:var(--board-width);display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .left, .right{display:flex;gap:8px;align-items:center}
+    button{padding:8px 12px;border-radius:8px;border:none;background:var(--theme-brown);color:#fff;cursor:pointer}
+    button.secondary{background:#6b8b6b}
+    #status{font-weight:700}
+    #board{width:var(--board-width);height:calc(var(--cell)*10);display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(10,1fr);border:8px solid var(--theme-brown);border-radius:10px;background:var(--theme-light);box-shadow:0 8px 28px rgba(0,0,0,0.18)}
+    .cell{border:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .12s,transform .08s}
+    .cell.sel{outline:3px solid rgba(58,143,243,0.9)}
+    .cell.move{background:rgba(60,200,60,0.15)}
+    .cell.capture::after{content:'';position:absolute;width:12px;height:12px;border-radius:50%;background:rgba(200,0,0,0.85);right:6px;bottom:6px}
+    .piece{font-weight:800;font-size:30px}
+    .red{color:#c62828}
+    .black{color:#231f20}
+    #modal{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:none;align-items:center;justify-content:center;z-index:50}
+    .dialog{background:#fff;padding:20px 26px;border-radius:10px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.28)}
+    .small{font-size:13px;color:#444}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div id="board" aria-label="象棋棋盘"></div>
+  <h1>中国象棋</h1>
+  <div class="controls">
+    <div class="left">
+      <div id="status">轮到：红方</div>
+      <button id="undo" class="secondary">悔棋</button>
+      <button id="restart">重新开始</button>
+      <button id="flip">翻转视角</button>
+    </div>
 
-    <div class="sidebar">
-      <div class="title">本地双人中国象棋</div>
-      <div class="info"><strong>轮到：</strong><span id="turnLabel">红</span></div>
-      <div class="info"><strong>说明：</strong>
-        <div>点击己方棋子选中，再点击目标格落子。支持合法规则检查（含马腿、象眼、士/将宫、炮跳吃）。</div>
-      </div>
-      <div style="display:flex; gap:10px;">
-        <button id="restart">重新开始</button>
-        <button id="flip">翻转视角</button>
-      </div>
-      <div class="footer">提示：这是一个功能完备的本地双人版本。后续可扩展悔棋、AI、网络对战。</div>
+    <div class="right">
+      <label class="small">模式：</label>
+      <select id="mode">
+        <option value="hotseat">本地双人</option>
+        <option value="ai">单人 vs AI（AI执黑）</option>
+      </select>
+      <button id="mute">静音</button>
     </div>
   </div>
 
+  <div id="board" aria-label="象棋棋盘"></div>
+
+  <div id="modal"><div class="dialog"><h2 id="winnerText"></h2><div style="margin-top:12px"><button id="again">再来一局</button></div></div></div>
+
+  <!-- 音效（内置短音频 base64 简短占位） -->
+  <audio id="moveAudio"><source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=" type="audio/wav"></audio>
+  <audio id="captureAudio"><source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=" type="audio/wav"></audio>
+  <audio id="winAudio"><source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=" type="audio/wav"></audio>
+
   <script>
-    // Board coordinates: rows 0..9, cols 0..8. 0 at top (黑方阵营), 9 at bottom (红方阵营).
-    // Piece codes: uppercase for red, lowercase for black.
+    // 简化的单文件象棋（含悔棋、音效、随机AI）
+    const PIECE_MAP={R:'車',N:'馬',B:'相',A:'仕',K:'帥',C:'炮',P:'兵',r:'車',n:'馬',b:'象',a:'士',k:'將',c:'砲',p:'卒'};
+    const boardEl=document.getElementById('board');
+    const status=document.getElementById('status');
+    const undoBtn=document.getElementById('undo');
+    const restartBtn=document.getElementById('restart');
+    const flipBtn=document.getElementById('flip');
+    const modal=document.getElementById('modal');
+    const winnerText=document.getElementById('winnerText');
+    const againBtn=document.getElementById('again');
+    const modeSelect=document.getElementById('mode');
+    const muteBtn=document.getElementById('mute');
 
-    const PIECE_MAP = {
-      'R': {name:'車', char:'車'}, 'N':{name:'馬', char:'馬'}, 'B':{name:'相', char:'相'}, 'A':{name:'仕', char:'仕'}, 'K':{name:'帥', char:'帥'}, 'C':{name:'炮', char:'炮'}, 'P':{name:'兵', char:'兵'},
-      'r': {name:'車', char:'車'}, 'n':{name:'馬', char:'馬'}, 'b':{name:'象', char:'象'}, 'a':{name:'士', char:'士'}, 'k':{name:'將', char:'將'}, 'c':{name:'砲', char:'砲'}, 'p':{name:'卒', char:'卒'}
-    };
+    const moveAudio=document.getElementById('moveAudio');
+    const captureAudio=document.getElementById('captureAudio');
+    const winAudio=document.getElementById('winAudio');
 
-    let boardEl = document.getElementById('board');
-    let turnLabel = document.getElementById('turnLabel');
-    let restartBtn = document.getElementById('restart');
-    let flipBtn = document.getElementById('flip');
+    let state={board:[],turn:'red',selected:null,flipped:false,over:false,history:[]};
+    let settings={muted:false,mode:'hotseat'};
 
-    let state = { board: [], turn: 'red', selected: null, flipped: false };
-
-    function initBoard() {
-      // empty 10x9
-      const b = Array.from({length:10}, ()=> Array(9).fill(null));
-      // Black side (top) lowercase
-      b[0] = ['r','n','b','a','k','a','b','n','r'];
-      b[2] = [null,'c',null,null,null,null,null,'c',null];
-      b[3] = ['p',null,'p',null,'p',null,'p',null,'p'];
-      // Red side uppercase (bottom)
-      b[6] = ['P',null,'P',null,'P',null,'P',null,'P'];
-      b[7] = [null,'C',null,null,null,null,null,'C',null];
-      b[9] = ['R','N','B','A','K','A','B','N','R'];
-      state.board = b;
-      state.turn = 'red';
-      state.selected = null;
-      render();
+    function initBoard(){
+      const b=Array.from({length:10},()=>Array(9).fill(null));
+      b[0]=['r','n','b','a','k','a','b','n','r'];
+      b[2]=[null,'c',null,null,null,null,null,'c',null];
+      b[3]=['p',null,'p',null,'p',null,'p',null,'p'];
+      b[6]=['P',null,'P',null,'P',null,'P',null,'P'];
+      b[7]=[null,'C',null,null,null,null,null,'C',null];
+      b[9]=['R','N','B','A','K','A','B','N','R'];
+      state.board=b;state.turn='red';state.selected=null;state.over=false;state.history=[];
+      updateStatus();render();
     }
 
-    function render() {
-      boardEl.innerHTML = '';
-      const b = state.board;
-      for (let r=0;r<10;r++){
-        for (let c=0;c<9;c++){
-          const cell = document.createElement('div');
-          cell.className = 'cell coord';
-          cell.dataset.r = r;
-          cell.dataset.c = c;
-          cell.title = `${r},${c}`;
-          // draw river text on rows between
-          if (r===4){ cell.style.borderBottom = '2px dashed rgba(0,0,0,0.06)'; }
+    function updateStatus(){ status.textContent = state.over? '对局结束' : `轮到：${state.turn==='red'?'红':'黑'}方`; }
 
-          const p = b[r][c];
-          if (p){
-            const span = document.createElement('div');
-            span.className = 'piece ' + (isRedPiece(p)?'red':'black');
-            span.textContent = PIECE_MAP[p].char;
-            cell.appendChild(span);
-          }
+    function isRed(p){return p&&p===p.toUpperCase();}
+    function isBlack(p){return p&&p===p.toLowerCase();}
+    function opp(p1,p2){return (isRed(p1)&&isBlack(p2))||(isBlack(p1)&&isRed(p2));}
 
-          cell.onclick = () => onCellClick(r,c);
-          boardEl.appendChild(cell);
-        }
+    function render(){ boardEl.innerHTML=''; const b=state.board; for(let r=0;r<10;r++){ for(let c=0;c<9;c++){ const div=document.createElement('div'); div.className='cell'; div.dataset.r=r; div.dataset.c=c; const p=b[r][c]; if(p){ const span=document.createElement('div'); span.className='piece '+(isRed(p)?'red':'black'); span.textContent=PIECE_MAP[p]; div.appendChild(span); } div.onclick=()=>cellClick(r,c); boardEl.appendChild(div);} } if(state.selected)highlight(state.selected.r,state.selected.c); updateStatus(); }
+
+    function cellClick(r,c){ if(state.over) return; const p=state.board[r][c]; if(state.selected){ const sel=state.selected; if(p && ((state.turn==='red'&&isRed(p)) || (state.turn==='black'&&isBlack(p)))){ state.selected={r,c}; render(); return; } const moves=genMoves(sel.r,sel.c,true); const valid=moves.find(m=>m.r===r&&m.c===c); if(valid){ doMove(sel.r,sel.c,r,c); } state.selected=null; render(); } else{ if(!p) return; if((state.turn==='red'&&isRed(p)) || (state.turn==='black'&&isBlack(p))){ state.selected={r,c}; render(); } } }
+
+    function pushHistory(){ state.history.push(copyBoard(state.board)); if(state.history.length>200) state.history.shift(); }
+    function undo(){ if(state.history.length===0) return; state.board = state.history.pop(); state.turn = state.turn==='red'?'black':'red'; state.selected=null; state.over=false; modal.style.display='none'; render(); }
+
+    function doMove(r1,c1,r2,c2){ pushHistory(); const piece=state.board[r1][c1]; const target=state.board[r2][c2]; state.board[r2][c2]=piece; state.board[r1][c1]=null; playAudio(target? 'capture':'move'); if(target && target.toLowerCase()==='k'){ endGame(isRed(piece)?'红':'黑'); return; } state.turn = state.turn==='red'? 'black':'red'; // after move check for checkmate
+      if(isCheckmate(state.turn)){
+        // if side to move has no legal moves and is in check (we treat as checkmate)
+        endGame(state.turn==='red'? '黑':'红'); return;
       }
-      turnLabel.textContent = state.turn === 'red' ? '红' : '黑';
-      if (state.selected) highlightMoves(state.selected.r, state.selected.c);
+      // if AI mode and it's AI's turn, schedule AI move
+      if(settings.mode==='ai' && state.turn==='black' && !state.over){ setTimeout(()=>aiMove(), 350 + Math.random()*400); }
     }
 
-    function isRedPiece(p){ return p && p === p.toUpperCase(); }
-    function isBlackPiece(p){ return p && p === p.toLowerCase(); }
+    function endGame(winner){ state.over=true; winnerText.textContent = `${winner}方胜利！`; modal.style.display='flex'; playAudio('win'); }
 
-    function onCellClick(r,c){
-      const p = state.board[r][c];
-      if (state.selected){
-        const sel = state.selected;
-        // If clicking same-side piece, change selection
-        if (p && ((state.turn==='red' && isRedPiece(p)) || (state.turn==='black' && isBlackPiece(p)))){
-          state.selected = {r,c}; render(); return;
-        }
-        // Try move
-        const moves = genMovesFor(sel.r, sel.c, true);
-        const legal = moves.some(m=>m.r===r && m.c===c);
-        if (legal){
-          makeMove(sel.r, sel.c, r, c);
-          state.selected = null;
-          render();
-        } else {
-          // invalid: deselect
-          state.selected = null; render();
-        }
-      } else {
-        // select if own piece
-        if (!p) return;
-        if ((state.turn==='red' && isRedPiece(p)) || (state.turn==='black' && isBlackPiece(p))){
-          state.selected = {r,c}; render();
-        }
-      }
-    }
+    function playAudio(kind){ if(settings.muted) return; try{ if(kind==='move') moveAudio.play(); else if(kind==='capture') captureAudio.play(); else if(kind==='win') winAudio.play(); }catch(e){} }
 
-    function highlightMoves(r,c){
-      const cells = boardEl.children;
-      const moves = genMovesFor(r,c,true);
-      for (let ch of cells) ch.classList.remove('sel','move','capture');
-      const idx = r*9 + c;
-      cells[idx].classList.add('sel');
-      for (let m of moves){
-        const i = m.r*9 + m.c;
-        cells[i].classList.add(m.capture? 'capture':'move');
-      }
-    }
+    function highlight(r,c){ const cells=boardEl.children; for(let ch of cells) ch.classList.remove('sel','move','capture'); const idx=r*9+c; cells[idx].classList.add('sel'); const moves=genMoves(r,c,true); for(let m of moves){ const i=m.r*9+m.c; cells[i].classList.add(m.capture?'capture':'move'); } }
 
-    function makeMove(r1,c1,r2,c2){
-      const piece = state.board[r1][c1];
-      const target = state.board[r2][c2];
-      // perform move
-      state.board[r2][c2] = piece;
-      state.board[r1][c1] = null;
-      // switch turn
-      state.turn = state.turn === 'red' ? 'black' : 'red';
-      // check for checkmate/generals facing
-      // (simple alert if general captured)
-      if (target && (target.toLowerCase()==='k')){
-        alert((isRedPiece(piece)?'红':'黑') + '方胜利：将死对方将/帅！');
-      }
-    }
+    // MOVE GENERATION (same rules as prior version) -- returns moves filtered to avoid leaving generals facing
+    function genMoves(r,c, validateFacing=false){ const p=state.board[r][c]; if(!p) return []; const red=isRed(p); const moves=[]; const onBoard=(rr,cc)=>rr>=0&&rr<10&&cc>=0&&cc<9; const same=q=>q&&((red&&isRed(q))||(!red&&isBlack(q))); const oppo=q=>q&&!same(q); const add=(rr,cc)=>{ if(!onBoard(rr,cc)) return; const q=state.board[rr][cc]; if(!same(q)) moves.push({r:rr,c:cc,capture:!!q}); } const code=p.toUpperCase(); if(code==='R'){[[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc])=>{let rr=r+dr,cc=c+dc;while(onBoard(rr,cc)){const q=state.board[rr][cc]; if(!q) moves.push({r:rr,c:cc}); else{ if(oppo(q)) moves.push({r:rr,c:cc,capture:true}); break; } rr+=dr; cc+=dc;}});} else if(code==='N'){[[ -2,-1,-1,0],[-2,1,-1,0],[2,-1,1,0],[2,1,1,0],[-1,-2,0,-1],[1,-2,0,-1],[-1,2,0,1],[1,2,0,1]].forEach(m=>{const[nr,nc,br,bc]=m; const lr=r+br,lc=c+bc; if(onBoard(r+nr,c+nc)&&!state.board[lr][lc]) add(r+nr,c+nc); }); } else if(code==='B'){[[2,2],[2,-2],[-2,2],[-2,-2]].forEach(([dr,dc])=>{ const nr=r+dr,nc=c+dc; if(!onBoard(nr,nc)) return; if((red&&nr<5)||(!red&&nr>4)) return; if(state.board[r+dr/2][c+dc/2]) return; add(nr,nc); }); } else if(code==='A'){[[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([dr,dc])=>{ const nr=r+dr,nc=c+dc; if(!onBoard(nr,nc)) return; if(!inPalace(nr,nc,red)) return; add(nr,nc); }); } else if(code==='K'){[[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc])=>{ const nr=r+dr,nc=c+dc; if(onBoard(nr,nc)&&inPalace(nr,nc,red)) add(nr,nc); }); const col=c; let rr=r+(red?-1:1); while(onBoard(rr,col)){ const q=state.board[rr][col]; if(q){ if(q.toUpperCase()==='K'&&oppo(q)) moves.push({r:rr,c:col,capture:true}); break; } rr+=(red?-1:1); } } else if(code==='C'){[[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,dc])=>{ let rr=r+dr,cc=c+dc; while(onBoard(rr,cc)&&!state.board[rr][cc]){ moves.push({r:rr,c:cc}); rr+=dr; cc+=dc; } rr+=dr; cc+=dc; while(onBoard(rr,cc)){ if(state.board[rr][cc]){ if(oppo(state.board[rr][cc])) moves.push({r:rr,c:cc,capture:true}); break; } rr+=dr; cc+=dc; } }); } else if(code==='P'){ const f=red?-1:1; if(onBoard(r+f,c)) add(r+f,c); if((red&&r<=4)||(!red&&r>=5)){ [-1,1].forEach(dc=> add(r,c+dc)); } }
+      // filter out same-side capture already handled by add
+      if(validateFacing){ return moves.filter(m=>{ const copy = simMove(state.board,r,c,m.r,m.c); return !generalsFacing(copy); }); }
+      return moves; }
 
-    // Generate moves for piece at r,c. If "validateFacing" true then filter out moves that leave generals facing each other.
-    function genMovesFor(r,c, validateFacing=false){
-      const p = state.board[r][c];
-      if (!p) return [];
-      const red = isRedPiece(p);
-      const code = p.toUpperCase();
-      let moves = [];
-      const add = (nr,nc, capture=false)=> moves.push({r:nr,c:nc,capture});
+    function simMove(b,r1,c1,r2,c2){ const copy = copyBoard(b); copy[r2][c2]=copy[r1][c1]; copy[r1][c1]=null; return copy; }
+    function inPalace(r,c,red){ return c>=3&&c<=5 && (red? r>=7&&r<=9 : r>=0&&r<=2); }
+    function copyBoard(b){ return b.map(row=>row.slice()); }
 
-      // helpers
-      const onBoard = (rr,cc)=> rr>=0 && rr<10 && cc>=0 && cc<9;
-      const sameSide = (piece)=> piece && ((red && isRedPiece(piece)) || (!red && isBlackPiece(piece)));
-      const oppSide = (piece)=> piece && !sameSide(piece);
+    function generalsFacing(b){ let posR=null,posB=null; for(let r=0;r<10;r++) for(let c=0;c<9;c++){ const p=b[r][c]; if(!p) continue; if(p.toUpperCase()==='K'){ if(isRed(p)) posR={r,c}; else posB={r,c}; } } if(!posR||!posB) return false; if(posR.c!==posB.c) return false; for(let rr=Math.min(posR.r,posB.r)+1; rr<Math.max(posR.r,posB.r); rr++){ if(b[rr][posR.c]) return false; } return true; }
 
-      if (code==='R'){ // chariot
-        // four directions
-        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-        for (let [dr,dc] of dirs){
-          let nr=r+dr, nc=c+dc;
-          while(onBoard(nr,nc)){
-            const q = state.board[nr][nc];
-            if (!q) add(nr,nc,false);
-            else { if (oppSide(q)) add(nr,nc,true); break; }
-            nr+=dr; nc+=dc;
-          }
-        }
-      } else if (code==='N'){ // horse
-        const horseMoves = [ [ -2,-1, -1,0 ], [ -2,1, -1,0 ], [ 2,-1, 1,0 ], [ 2,1, 1,0 ], [ -1,-2, 0,-1 ], [ 1,-2, 0,-1 ], [ -1,2, 0,1 ], [ 1,2, 0,1 ] ];
-        for (let m of horseMoves){
-          const [dr,dc, br,bc] = m;
-          const legr = r+br, legc = c+bc;
-          const nr=r+dr, nc=c+dc;
-          if (!onBoard(nr,nc)) continue;
-          if (state.board[legr][legc]) continue; // blocked by leg
-          const q = state.board[nr][nc];
-          if (!q) add(nr,nc,false);
-          else if (oppSide(q)) add(nr,nc,true);
-        }
-      } else if (code==='B'){ // elephant (red相 / black象) diagonal 2, cannot cross river
-        const dirs = [[-2,-2],[-2,2],[2,-2],[2,2]];
-        for (let [dr,dc] of dirs){
-          const nr=r+dr, nc=c+dc;
-          const eyeR = r+dr/2, eyeC = c+dc/2;
-          if (!onBoard(nr,nc)) continue;
-          // cannot cross river
-          if ( (isRedPiece(p) && nr<5) || (isBlackPiece(p) && nr>4) ) {
-            // red's elephants stay on bottom half (rows 5..9), black's stay on top half (rows 0..4)
-            // Note: in some conventions elephants can't cross, implemented here.
-          }
-          if (state.board[eyeR][eyeC]) continue; // eye blocked
-          const q = state.board[nr][nc];
-          if (!q) add(nr,nc,false);
-          else if (oppSide(q)) add(nr,nc,true);
-        }
-      } else if (code==='A'){ // advisor 1 diagonal within palace
-        const dirs=[[1,1],[1,-1],[-1,1],[-1,-1]];
-        for (let [dr,dc] of dirs){
-          const nr=r+dr,nc=c+dc; if (!onBoard(nr,nc)) continue;
-          if (!inPalace(nr,nc, isRedPiece(p))) continue;
-          const q = state.board[nr][nc];
-          if (!q) add(nr,nc,false); else if (oppSide(q)) add(nr,nc,true);
-        }
-      } else if (code==='K'){ // general
-        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-        for (let [dr,dc] of dirs){
-          const nr=r+dr,nc=c+dc; if (!onBoard(nr,nc)) continue;
-          if (!inPalace(nr,nc, isRedPiece(p))) continue;
-          const q = state.board[nr][nc];
-          if (!q) add(nr,nc,false); else if (oppSide(q)) add(nr,nc,true);
-        }
-        // flying general: if directly facing opponent general with no pieces between
-        const col = c; let step = isRedPiece(p)? -1:1;
-        let rr = r+step; let blocked=false; while(rr>=0 && rr<10){
-          if (state.board[rr][col]){ if (state.board[rr][col].toUpperCase()==='K'){ add(rr,col,true); } break; }
-          rr+=step;
-        }
+    function isCheckmate(color){ // if side has no legal moves (and possibly in check)
+      for(let r=0;r<10;r++) for(let c=0;c<9;c++){ const p=state.board[r][c]; if(!p) continue; if((color==='red'&&isRed(p))||(color==='black'&&isBlack(p))){ const moves=genMoves(r,c,true); if(moves.length>0) return false; } } return true; }
 
-      } else if (code==='C'){ // cannon
-        // move like rook for non-capture
-        const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-        for (let [dr,dc] of dirs){
-          let nr=r+dr, nc=c+dc;
-          while(onBoard(nr,nc) && !state.board[nr][nc]){ add(nr,nc,false); nr+=dr; nc+=dc; }
-          // now find piece to jump over
-          if (!onBoard(nr,nc)) continue;
-          nr+=dr; nc+=dc; while(onBoard(nr,nc)){
-            if (state.board[nr-dr][nc-dc]){ /* there's a screen */ }
-            if (state.board[nr][nc]){ if (oppSide(state.board[nr][nc])) add(nr,nc,true); break; }
-            nr+=dr; nc+=dc;
-          }
-        }
-      } else if (code==='P'){ // soldier
-        const forward = isRedPiece(p)? -1: 1; // red moves up
-        const nr=r+forward, nc=c;
-        if (onBoard(nr,nc)){ const q=state.board[nr][nc]; if (!q) add(nr,nc,false); else if (oppSide(q)) add(nr,nc,true); }
-        // after crossing river can move left/right
-        const crossed = isRedPiece(p)? r<=4 : r>=5;
-        if (crossed){
-          for (let dc of [-1,1]){
-            const rr=r, cc=c+dc; if (!onBoard(rr,cc)) continue; const q=state.board[rr][cc]; if (!q) add(rr,cc,false); else if (oppSide(q)) add(rr,cc,true);
-          }
-        }
-      }
+    // AI: very simple random-move AI for black
+    function aiMove(){ if(state.over) return; // collect all legal moves for black
+      const movesAll=[]; for(let r=0;r<10;r++) for(let c=0;c<9;c++){ const p=state.board[r][c]; if(!p) continue; if(isBlack(p)){ const moves=genMoves(r,c,true); moves.forEach(m=>movesAll.push({r,c,m})); } } if(movesAll.length===0){ if(isCheckmate('black')) endGame('红'); return; } // prioritize captures slightly
+      movesAll.sort((a,b)=> (b.m.capture?1:0) - (a.m.capture?1:0)); const choices = movesAll.slice(0, Math.max(1, Math.floor(movesAll.length*0.5))); const pick = choices[Math.floor(Math.random()*choices.length)]; doMove(pick.r,pick.c,pick.m.r,pick.m.c); render(); }
 
-      // filter out moves that capture same-side or leave generals facing each other
-      moves = moves.filter(m=>{
-        const q = state.board[m.r][m.c]; if (q && sameSide(q)) return false; return true;
-      });
+    // UI wiring
+    undoBtn.onclick = ()=>{ undo(); };
+    restartBtn.onclick = ()=>{ initBoard(); };
+    flipBtn.onclick = ()=>{ state.flipped = !state.flipped; boardEl.style.transform = state.flipped? 'rotate(180deg)' : 'none'; boardEl.querySelectorAll('.piece').forEach(x=> x.style.transform = state.flipped? 'rotate(180deg)' : 'none'); };
+    againBtn.onclick = ()=>{ initBoard(); };
+    modeSelect.onchange = ()=>{ settings.mode = modeSelect.value; // if switching to AI and it's black turn, let AI play
+      if(settings.mode==='ai' && state.turn==='black' && !state.over){ setTimeout(()=>aiMove(),200); } };
+    muteBtn.onclick = ()=>{ settings.muted = !settings.muted; muteBtn.textContent = settings.muted? '已静音' : '静音'; };
 
-      if (validateFacing){
-        moves = moves.filter(m=> {
-          // simulate
-          const copy = copyBoard(state.board);
-          copy[m.r][m.c] = copy[r][c]; copy[r][c] = null;
-          // check if generals face each other
-          return !generalsFacing(copy);
-        });
-      }
+    // basic keyboard: Z to undo
+    window.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()==='z') undo(); });
 
-      return moves;
-    }
+    // helper: when loading, ensure audio volume low by default
+    moveAudio.volume = 0.25; captureAudio.volume = 0.35; winAudio.volume = 0.5;
 
-    function inPalace(r,c, isRed){
-      if (c<3 || c>5) return false;
-      if (isRed) return r>=7 && r<=9;
-      else return r>=0 && r<=2;
-    }
-
-    function copyBoard(b){ return b.map(row=> row.slice()); }
-
-    function generalsFacing(b){
-      // find generals
-      let posK = null, posk = null;
-      for (let r=0;r<10;r++) for (let c=0;c<9;c++){
-        const p = b[r][c]; if (!p) continue;
-        if (p.toUpperCase()==='K'){
-          if (isRedPiece(p)) posK = {r,c}; else posk = {r,c};
-        }
-      }
-      // if both exist and in same column
-      if (!posK || !posk) return false;
-      if (posK.c !== posk.c) return false;
-      const col = posK.c; const r1 = posK.r, r2 = posk.r; const start = Math.min(r1,r2)+1, end = Math.max(r1,r2)-1;
-      for (let rr=start; rr<=end; rr++) if (b[rr][col]) return false;
-      return true;
-    }
-
-    // Wire up restart and flip
-    restartBtn.onclick = ()=> initBoard();
-    flipBtn.onclick = ()=> { state.flipped = !state.flipped; boardEl.style.transform = state.flipped? 'rotate(180deg)':'none'; boardEl.querySelectorAll('.cell').forEach(x=> x.style.transform = state.flipped? 'rotate(180deg)':'none'); };
-
-    // initialize
+    // initial setup
     initBoard();
   </script>
 </body>
 </html>
+
