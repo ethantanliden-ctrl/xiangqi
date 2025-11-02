@@ -3,21 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>演示 - 伪木马界面（仅演示）</title>
+  <title>伪木马弹窗演示 — 仅演示 / Harmless Demo</title>
   <meta name="robots" content="noindex,nofollow">
   <style>
     :root{
-      --bg:#0b0f1a;
-      --panel:#0f1724;
+      --bg:#071027;
+      --card:#0f1724;
       --accent:#ff4d4f;
       --ok:#50e3a4;
       --muted:#9aa7bd;
+      --glass: rgba(255,255,255,0.03);
     }
     *{box-sizing:border-box}
     body{
       margin:0;
-      font-family:Inter,system-ui,Segoe UI,Arial,"Helvetica Neue",sans-serif;
-      background:linear-gradient(180deg,var(--bg),#071025);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(circle at 10% 10%, #0b1630 0%, var(--bg) 40%);
       color:#e6eef6;
       min-height:100vh;
       display:flex;
@@ -25,171 +26,290 @@
       justify-content:center;
       padding:24px;
     }
-    .container{max-width:920px;width:100%;}
-    header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:14px}
+    .frame{
+      width:100%;max-width:980px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+      border-radius:12px;padding:20px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 10px 40px rgba(2,6,23,0.7)
+    }
+    header{display:flex;align-items:center;gap:12px;justify-content:space-between}
     header h1{font-size:1rem;color:var(--muted);margin:0}
-    .badge{
-      background:rgba(255,255,255,0.03);
-      padding:6px 10px;border-radius:10px;font-size:13px;color:#ffdede;border:1px solid rgba(255,77,79,0.08)
+    header .warn{background:#2b0a0a;padding:6px 10px;border-radius:8px;color:#ffdede;border:1px solid rgba(255,77,79,0.08)}
+    .controls{display:flex;gap:8px;margin-top:14px}
+    button{cursor:pointer;border:none;padding:10px 12px;border-radius:8px;background:var(--accent);color:white;font-weight:600}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#dce8f8;font-weight:500}
+    button.stop{background:#333;border:1px solid rgba(255,255,255,0.04)}
+    .note{margin-top:12px;color:var(--muted);font-size:13px}
+    /* popup style */
+    .popup{
+      position:fixed;
+      width:320px;
+      max-width:90%;
+      background:linear-gradient(180deg,#0b1220, #071428);
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.06);
+      box-shadow:0 12px 30px rgba(2,6,23,0.6);
+      padding:10px;
+      z-index:9999;
+      user-select:none;
     }
-    .panel{
-      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      border:1px solid rgba(255,255,255,0.04);
-      padding:20px;border-radius:12px;
-      box-shadow:0 8px 30px rgba(2,6,23,0.6);
+    .popup .title{
+      display:flex;align-items:center;gap:8px;
+      font-weight:700;margin-bottom:8px;color:#ffdede;
     }
-    .status{font-size:0.95rem;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-    .status .dot{width:10px;height:10px;border-radius:50%;background:#50e3a4;display:inline-block;box-shadow:0 0 6px rgba(80,227,164,0.25)}
-    #trigger{background:var(--accent);border:none;padding:10px 14px;border-radius:8px;color:white;cursor:pointer}
-    #trigger:active{transform:translateY(1px)}
-    .fake-window{margin-top:16px;padding:16px;background:#071428;border-radius:10px;border:1px solid rgba(255,77,79,0.08);display:none}
-    .fake-window h2{margin:0 0 8px 0;color:var(--accent)}
-    .progress{height:12px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden;margin:10px 0}
-    .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#ffb1b3);transition:width .6s ease}
-    .log{max-height:160px;overflow:auto;font-family:monospace;font-size:12px;color:var(--muted);background:rgba(0,0,0,0.15);padding:8px;border-radius:6px;margin-top:8px}
-    #reset{margin-top:12px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#dce8f8;cursor:pointer}
-    footer{margin-top:12px;text-align:center;color:var(--muted);font-size:12px}
-    .small-note{font-size:13px;color:var(--muted);margin-top:8px}
+    .popup .tag{background:rgba(255,255,255,0.03);padding:3px 7px;border-radius:6px;font-size:11px;color:var(--muted);margin-left:auto}
+    .popup .body{font-size:13px;color:#dbeaf6;margin-bottom:10px}
+    .popup .actions{display:flex;gap:8px;justify-content:flex-end}
+    .btn{padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#dce8f8;cursor:pointer}
+    .btn.primary{background:var(--accent);color:white;border:none}
+    .fake-input{width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);background:rgba(0,0,0,0.18);color:#fff}
+    /* small top-right mini pop */
+    .mini{
+      width:220px;padding:8px;font-size:13px;border-radius:8px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .progress-slim{height:8px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden}
+    .progress-slim > i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#ffb1b3);transition:width .4s}
+    /* visible watermark */
+    .watermark{
+      position:fixed;left:10px;bottom:10px;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,0.4);font-size:12px;color:var(--muted);
+      border:1px solid rgba(255,255,255,0.03)
+    }
+    /* prevent pointer events on page backdrop while demo runs? not necessary */
     @media (max-width:520px){
-      .panel{padding:14px}
+      .popup{width:92%}
     }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="frame" role="main" aria-live="polite">
     <header>
-      <h1>演示 - 伪木马界面（用于安全意识 / 教育）</h1>
-      <div class="badge">仅演示 · 无害</div>
+      <h1>伪木马弹窗演示（极度逼真风格）</h1>
+      <div class="warn">重要：仅演示 · 无害</div>
     </header>
 
-    <div class="panel">
-      <div class="status">
-        <span class="dot" aria-hidden="true"></span>
-        <div>系统状态： <strong id="state">正常</strong></div>
-      </div>
+    <p class="note">演示会生成大量弹窗（模拟社会工程或恶意弹窗界面）。<strong>页面绝不会</strong>下载文件、收集密码或执行系统命令。请勿在真实环境欺骗他人。</p>
 
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <button id="trigger">模拟感染</button>
-        <button id="fakeAlert" title="演示弹窗效果">弹窗演示</button>
-        <div style="margin-left:auto" class="small-note">说明：页面**不会**执行任何系统命令或下载文件。</div>
-      </div>
-
-      <div class="fake-window" id="fakeWindow" aria-hidden="true">
-        <h2>警报 — 未授权访问检测</h2>
-        <p id="msg">正在扫描...</p>
-
-        <div class="progress" aria-hidden="true">
-          <div class="bar" id="bar" style="width:0%"></div>
-        </div>
-
-        <div class="log" id="log" aria-live="polite" aria-atomic="false"></div>
-
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button id="reset">重置（安全）</button>
-          <button id="more" style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#dce8f8;cursor:pointer">更多信息</button>
-        </div>
-      </div>
+    <div class="controls">
+      <button id="start">开始模拟（需用户确认）</button>
+      <button id="start-heavy" class="ghost">强模式（更多弹窗）</button>
+      <button id="stop" class="stop">停止并清除全部</button>
     </div>
 
-    <footer>
-      这是一个完全无害的前端演示，用于展示社会工程学界面效果与安全意识。<br>
-      请在仓库 README 中明确说明用途与警告。
-    </footer>
+    <p class="note">建议：在虚拟机或沙盒环境演示给学习者看。演示过程中可随时按 <strong>停止并清除全部</strong>。</p>
   </div>
 
-  <script>
-    // 仅演示脚本 —— 绝对不会执行系统命令、下载或运行本地程序
-    (function(){
-      const trigger = document.getElementById('trigger');
-      const fake = document.getElementById('fakeWindow');
-      const state = document.getElementById('state');
-      const bar = document.getElementById('bar');
-      const log = document.getElementById('log');
-      const msg = document.getElementById('msg');
-      const reset = document.getElementById('reset');
-      const fakeAlert = document.getElementById('fakeAlert');
-      const more = document.getElementById('more');
+  <div class="watermark">DEMO — 教学用途 · 无害</div>
 
-      function appendLog(text){
-        const time = new Date().toLocaleTimeString();
-        log.innerHTML += `[${time}] ${text}<br>`;
-        log.scrollTop = log.scrollHeight;
+  <script>
+    (function(){
+      const start = document.getElementById('start');
+      const startHeavy = document.getElementById('start-heavy');
+      const stop = document.getElementById('stop');
+
+      let running = false;
+      let popupCount = 0;
+      let timers = [];
+      let zIndexCounter = 10000;
+      const presets = [
+        {title:'系统警告', body:'检测到未经授权的远程访问尝试。立即断开网络并扫描系统。', tag:'DEMO'},
+        {title:'安全通知', body:'您的账户已在其它设备登录。若非本人操作请更改密码。', tag:'DEMO'},
+        {title:'重要更新', body:'关键更新可修复安全漏洞。是否立即重启并安装？', tag:'DEMO'},
+        {title:'浏览器扩展', body:'某扩展请求访问您的摄像头与麦克风。允许吗？', tag:'DEMO'},
+        {title:'下载完成', body:'文件 "invoice_2025.exe" 下载完成。是否运行？ （模拟）', tag:'DEMO'},
+        {title:'磁盘异常', body:'检测到磁盘读写异常，建议立即运行磁盘修复。', tag:'DEMO'}
+      ];
+
+      function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min }
+
+      function makePopup(opts){
+        popupCount++;
+        const id = 'popup-' + popupCount;
+        const p = document.createElement('div');
+        p.className = 'popup';
+        p.id = id;
+        p.style.left = (rand(40, window.innerWidth - 380)) + 'px';
+        p.style.top = (rand(40, window.innerHeight - 260)) + 'px';
+        p.style.zIndex = ++zIndexCounter;
+
+        // content depends on type
+        const title = document.createElement('div');
+        title.className = 'title';
+        title.innerHTML = `<span>${opts.title}</span><span class="tag">${opts.tag || 'DEMO'}</span>`;
+
+        const body = document.createElement('div');
+        body.className = 'body';
+        body.innerText = opts.body || '';
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        // build different action sets by type
+        if(opts.variant === 'confirm'){
+          const ok = document.createElement('button'); ok.className='btn primary'; ok.innerText='是'; ok.onclick=()=> closePopup(id);
+          const no = document.createElement('button'); no.className='btn'; no.innerText='否'; no.onclick=()=> closePopup(id);
+          actions.appendChild(no); actions.appendChild(ok);
+        } else if(opts.variant === 'input'){
+          const inp = document.createElement('input'); inp.className='fake-input'; inp.placeholder='请输入验证码（演示）';
+          body.appendChild(document.createElement('br'));
+          body.appendChild(document.createElement('br'));
+          body.appendChild(inp);
+          const sub = document.createElement('button'); sub.className='btn primary'; sub.innerText='提交'; sub.onclick=()=> {
+            appendLog(`用户输入（未发送）: ${inp.value || '<空>'}`);
+            closePopup(id);
+          };
+          const cancel = document.createElement('button'); cancel.className='btn'; cancel.innerText='取消'; cancel.onclick=()=> closePopup(id);
+          actions.appendChild(cancel); actions.appendChild(sub);
+        } else if(opts.variant === 'progress'){
+          const slim = document.createElement('div'); slim.className='progress-slim'; slim.innerHTML='<i style="width:0%"></i>';
+          body.appendChild(document.createElement('br'));
+          body.appendChild(slim);
+          const cancel = document.createElement('button'); cancel.className='btn'; cancel.innerText='取消'; cancel.onclick=()=> closePopup(id);
+          actions.appendChild(cancel);
+          // animate progress
+          let prog = 0;
+          const progBar = slim.querySelector('i');
+          const t = setInterval(()=>{
+            prog += rand(6,18);
+            if(prog>100) prog=100;
+            progBar.style.width = prog + '%';
+            if(prog>=100){ clearInterval(t); appendLog(opts.title + ' 完成（演示）'); }
+          }, 500);
+          timers.push(t);
+        } else { // default
+          const ok = document.createElement('button'); ok.className='btn primary'; ok.innerText='关闭'; ok.onclick=()=> closePopup(id);
+          const more = document.createElement('button'); more.className='btn'; more.innerText='详情'; more.onclick=()=> {
+            // spawn a small mini popup
+            makeMini(opts.title + ' — 详情', '相关信息（演示）');
+          };
+          actions.appendChild(more); actions.appendChild(ok);
+        }
+
+        p.appendChild(title);
+        p.appendChild(body);
+        p.appendChild(actions);
+
+        document.body.appendChild(p);
+
+        // make draggable
+        makeDraggable(p);
+
+        // slight attention-grabbing animation
+        p.animate([{transform:'translateY(-6px) scale(0.98)'},{transform:'translateY(0) scale(1)'}], {duration:180, easing:'ease-out'});
+
+        return id;
       }
 
-      trigger.addEventListener('click', ()=>{
-        if(!confirm('这是一个演示：确认开始模拟“感染”流程吗？')) return;
-        fake.style.display = 'block';
-        state.textContent = '警告';
-        state.style.color = '';
-        appendLog('检测到可疑活动 — 启动应急流程（仅演示）');
-        msg.textContent = '正在响应...';
+      function makeMini(t, b){
+        const mini = document.createElement('div');
+        mini.className = 'popup mini';
+        mini.style.width = '240px';
+        mini.style.left = (window.innerWidth - rand(260,70)) + 'px';
+        mini.style.top = (rand(40,140)) + 'px';
+        mini.style.zIndex = ++zIndexCounter;
+        mini.innerHTML = `<div class="title" style="font-size:13px;color:#ffdede">${t}<span class="tag">DEMO</span></div>
+                          <div class="body" style="font-size:13px;color:#dbeaf6">${b}</div>
+                          <div class="progress-slim" style="margin-top:8px"><i style="width:0%"></i></div>`;
+        document.body.appendChild(mini);
+        makeDraggable(mini);
+        // animate progress
+        const bar = mini.querySelector('i');
+        let s = 0;
+        const tmr = setInterval(()=>{ s+=rand(10,30); if(s>100) s=100; bar.style.width = s + '%'; if(s>=100){ clearInterval(tmr); }}, 300);
+        timers.push(tmr);
+      }
 
-        // 模拟进度与不同日志条目
-        let p = 0;
-        bar.style.width = '0%';
-        const steps = [
-          '初始化扫描引擎',
-          '加载行为指纹模块',
-          '分析活动流量',
-          '隔离可疑进程',
-          '启动沙箱模拟',
-          '完成拦截'
-        ];
-        let stepIndex = 0;
+      function closePopup(id){
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.remove();
+      }
 
-        const interval = setInterval(()=>{
-          // 平滑随机增加
-          p += Math.random()*14 + 6;
-          if(p>100) p = 100;
-          bar.style.width = Math.floor(p) + '%';
+      function makeDraggable(el){
+        let isDown=false, startX, startY, origX, origY;
+        const hdr = el.querySelector('.title') || el;
+        hdr.style.cursor='move';
+        hdr.addEventListener('pointerdown', (e)=>{
+          isDown=true;
+          startX=e.clientX; startY=e.clientY;
+          origX = el.offsetLeft; origY = el.offsetTop;
+          el.style.zIndex = ++zIndexCounter;
+          e.preventDefault();
+        });
+        window.addEventListener('pointermove', (e)=>{
+          if(!isDown) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          el.style.left = (origX + dx) + 'px';
+          el.style.top = (origY + dy) + 'px';
+        });
+        window.addEventListener('pointerup', ()=> isDown=false);
+      }
 
-          // 有时添加步骤日志
-          if(Math.random() > 0.5 && stepIndex < steps.length){
-            appendLog(steps[stepIndex]);
-            stepIndex++;
-          } else {
-            appendLog('处理模块运行 — 进度 ' + Math.floor(p) + '%');
+      function appendLog(txt){
+        // also show small console logs in devtools
+        console.log('[DEMO]', txt);
+      }
+
+      function spawnWave(count, heavy){
+        for(let i=0;i<count;i++){
+          const preset = presets[rand(0,presets.length-1)];
+          let variantChance = Math.random();
+          let variant = null;
+          if(variantChance < 0.2) variant = 'progress';
+          else if(variantChance < 0.4) variant = 'input';
+          else if(variantChance < 0.6) variant = 'confirm';
+          // slightly modify text to feel dynamic
+          const body = preset.body + '（演示）';
+          const id = makePopup({title:preset.title, body:body, tag:'DEMO', variant:variant});
+          // occasionally trigger browser alert (not many)
+          if(Math.random() < 0.12 && heavy){
+            setTimeout(()=>{ alert(preset.title + ' — 这是浏览器 alert 演示（仅演示）'); }, rand(400,1800));
           }
+        }
+        // spawn some mini notifications
+        const miniCount = heavy ? rand(3,8) : rand(1,4);
+        for(let j=0;j<miniCount;j++){
+          setTimeout(()=> makeMini('通知', ['更新就绪','可疑登录','文件已下载'][rand(0,2)]), rand(200,1500));
+        }
+      }
 
-          if(p >= 100){
-            clearInterval(interval);
-            appendLog('模拟：已拦截可疑进程（演示）');
-            msg.textContent = '已安全隔离（仅演示）';
-            state.textContent = '已隔离';
-            state.style.color = '#50e3a4';
-          }
-        }, 700);
-      });
+      function startDemo(heavy){
+        if(running) return;
+        if(!confirm('确认开始“弹窗演示”？请确保已了解为教学用途且可随时停止。')) return;
+        running = true;
+        appendLog('演示开始（heavy=' + !!heavy + ')');
+        // immediate wave
+        spawnWave(heavy?8:4, heavy);
+        // follow-up waves
+        const t1 = setTimeout(()=> spawnWave(heavy?6:3, heavy), rand(800,1800));
+        const t2 = setTimeout(()=> spawnWave(heavy?8:4, heavy), rand(1600,4200));
+        const t3 = setInterval(()=> spawnWave(heavy?4:2, heavy), 5000);
+        timers.push(t1, t2, t3);
+      }
 
-      fakeAlert.addEventListener('click', ()=>{
-        alert('示例弹窗：警报 — 请勿惊慌。此为演示弹窗。');
-      });
+      function stopDemo(){
+        running = false;
+        appendLog('停止并清除全部弹窗');
+        // clear timers
+        timers.forEach(t=>{
+          try{ clearInterval(t); clearTimeout(t); }catch(e){}
+        });
+        timers = [];
+        // remove all popup elements
+        document.querySelectorAll('.popup').forEach(n=>n.remove());
+      }
 
-      reset.addEventListener('click', ()=>{
-        if(!confirm('重置演示界面？')) return;
-        fake.style.display = 'none';
-        state.textContent = '正常';
-        state.style.color = '';
-        bar.style.width = '0%';
-        log.innerHTML = '';
-        msg.textContent = '正在扫描...';
-        appendLog('已重置');
-      });
+      start.addEventListener('click', ()=> startDemo(false));
+      startHeavy.addEventListener('click', ()=> startDemo(true));
+      stop.addEventListener('click', stopDemo);
 
-      more.addEventListener('click', ()=>{
-        const info = [
-          '演示目的：教育用户识别社交工程与伪装界面。',
-          '关键点：真实攻击会尝试下载/运行文件、请求高权限或诱导用户提供凭据。',
-          '防护建议：不要运行不明程序、定期更新系统、使用杀软并开启多重验证。'
-        ];
-        alert(info.join('\\n\\n'));
-      });
+      // safety: also stop on Escape
+      window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') stopDemo(); });
 
-      // 初始欢迎日志
-      appendLog('演示就绪 — 点击 "模拟感染" 开始（仅演示）');
+      // initial tiny hint popup (not intrusive)
+      setTimeout(()=> {
+        makeMini('演示就绪', '点击 "开始模拟" 来生成弹窗（仅演示）');
+      }, 600);
     })();
   </script>
 </body>
 </html>
-
-
